@@ -101,9 +101,13 @@ export const useMentions = ({ profiles, tags, currentTeamId, teams }: UseMention
             const text = node.textContent || '';
             const cursor = range.startOffset;
             const lastAt = text.lastIndexOf('@', cursor - 1);
+            const lastHash = text.lastIndexOf('#', cursor - 1);
 
-            if (lastAt !== -1 && !text.slice(lastAt, cursor).includes(' ')) {
-                const newQuery = text.slice(lastAt + 1, cursor);
+            // Determine which trigger is closer to cursor
+            const triggerIdx = Math.max(lastAt, lastHash);
+
+            if (triggerIdx !== -1 && !text.slice(triggerIdx, cursor).includes(' ')) {
+                const newQuery = text.slice(triggerIdx + 1, cursor);
                 setQuery(newQuery);
                 setIsOpen(true);
                 setTargetThreadId(threadId);
@@ -140,17 +144,23 @@ export const useMentions = ({ profiles, tags, currentTeamId, teams }: UseMention
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent || '';
             const cursor = range.startOffset;
-            const lastAt = text.lastIndexOf('@', cursor - 1);
 
-            if (lastAt !== -1) {
-                const before = text.slice(0, lastAt);
+            // Find the trigger (@ or #)
+            const lastAt = text.lastIndexOf('@', cursor - 1);
+            const lastHash = text.lastIndexOf('#', cursor - 1);
+            const triggerIdx = Math.max(lastAt, lastHash);
+
+            if (triggerIdx !== -1) {
+                const before = text.slice(0, triggerIdx);
                 const after = text.slice(cursor);
 
                 const beforeNode = document.createTextNode(before);
                 const mentionSpan = document.createElement('span');
-                mentionSpan.className = 'mention';
+                // User requested tags to also display with @ for now
+                const prefix = '@';
+                mentionSpan.className = candidate.type === 'tag' ? 'mention mention-tag' : 'mention';
                 mentionSpan.contentEditable = 'false';
-                mentionSpan.innerText = `@${candidate.display}`;
+                mentionSpan.innerText = `${prefix}${candidate.display}`;
                 const spaceNode = document.createTextNode('\u00A0'); // nbsp
                 const afterNode = document.createTextNode(after);
 
@@ -180,6 +190,8 @@ export const useMentions = ({ profiles, tags, currentTeamId, teams }: UseMention
             const selection = window.getSelection();
             if (selection && selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
+
+                // If we are at the start of a container, check if previous is a mention
                 if (range.collapsed && range.startOffset === 0) {
                     const node = range.startContainer;
                     let prev: Node | null = null;
@@ -193,6 +205,24 @@ export const useMentions = ({ profiles, tags, currentTeamId, teams }: UseMention
                         e.preventDefault();
                         prev.parentNode?.removeChild(prev);
                         return;
+                    }
+                }
+
+                // Also handle the case where we are at offset 1 of an NBSP text node immediately following a mention
+                if (range.collapsed && range.startOffset === 1 && range.startContainer.nodeType === Node.TEXT_NODE) {
+                    const node = range.startContainer;
+                    if (node.textContent === '\u00A0') {
+                        const prev = node.previousSibling;
+                        if (prev && prev.nodeType === Node.ELEMENT_NODE && (prev as HTMLElement).classList.contains('mention')) {
+                            e.preventDefault();
+                            // Remove both the nbsp and the mention
+                            const parent = node.parentNode;
+                            if (parent) {
+                                parent.removeChild(prev);
+                                parent.removeChild(node);
+                            }
+                            return;
+                        }
                     }
                 }
             }
