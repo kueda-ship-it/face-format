@@ -1,0 +1,359 @@
+import React, { useState, useRef } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { useMentions } from '../../hooks/useMentions';
+import { useProfiles, useTags, useTeams } from '../../hooks/useSupabase';
+import { useOneDriveUpload } from '../../hooks/useOneDriveUpload';
+import { MentionList } from '../common/MentionList';
+
+import { initializeMsal } from '../../lib/microsoftGraph';
+
+interface PostFormProps {
+    teamId: number | string | null;
+    onSuccess?: () => void;
+}
+
+export const PostForm: React.FC<PostFormProps> = ({ teamId, onSuccess }) => {
+    const { user, profile } = useAuth();
+    const [title, setTitle] = useState('');
+    const [remindAt, setRemindAt] = useState('');
+    const [loading, setLoading] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    const { profiles } = useProfiles();
+    const { tags } = useTags();
+    const { teams } = useTeams();
+
+    // New hook interface
+    const {
+        attachments,
+        uploading,
+        statusMessage,
+        uploadFile,
+        removeFile,
+        clearFiles,
+        isAuthenticated, // Added
+        login // Added
+    } = useOneDriveUpload();
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const {
+        isOpen,
+        candidates,
+        activeIndex,
+        mentionPosition,
+        mentionCoords,
+        handleInput,
+        handleKeyDown,
+        insertMention,
+    } = useMentions({ profiles, tags, currentTeamId: teamId, teams });
+
+    // Ensure MSAL is initialized on mount so we can check it synchronously later
+    React.useEffect(() => {
+        initializeMsal().catch(console.error);
+    }, []);
+
+    const handleSubmit = async () => {
+        if (!title.trim() || !contentRef.current?.innerText.trim()) {
+            alert('タイトルと内容を入力してください。');
+            return;
+        }
+
+        if (!user) return;
+        if (uploading) return;
+
+        setLoading(true);
+        try {
+            const authorName = profile?.display_name || user.email || 'Unknown';
+
+            const { error } = await supabase.from('threads').insert([
+                {
+                    title,
+                    content: contentRef.current.innerHTML,
+                    author: authorName,
+                    user_id: user.id,
+                    team_id: teamId,
+                    status: 'pending',
+                    attachments: attachments.length > 0 ? attachments : null,
+                    remind_at: remindAt ? new Date(remindAt).toISOString() : null
+                }
+            ]).select();
+
+            if (error) throw error;
+
+            if (error) throw error;
+
+            setTitle('');
+            setRemindAt('');
+            if (contentRef.current) contentRef.current.innerHTML = '';
+            clearFiles();
+            if (onSuccess) onSuccess();
+
+        } catch (error: any) {
+            alert('投稿に失敗しました: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        // Reset input value locally to allow re-selecting same file if needed in future,
+        // but carefully to not break current loop
+
+        for (const file of files) {
+            await uploadFile(file);
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+    const handleAttachClick = async () => {
+        // Auth check before opening file picker to avoid "popup blocked" issues during upload
+        // 1. If authenticated, OPEN FILE PICKER IMMEDIATELY
+        // 2. If not, trigger login (popup) synchronously
+
+        if (isAuthenticated) {
+            fileInputRef.current?.click();
+        } else {
+            setIsLoggingIn(true);
+            try {
+                const account = await login();
+                if (account) {
+                    fileInputRef.current?.click();
+                }
+            } finally {
+                setIsLoggingIn(false);
+            }
+        }
+    };
+
+
+
+    return (
+        <div className="static-form-container">
+            <section className="form-container compact-form" style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+                {/* 左側: 入力エリア */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* 1行目: 件名とリマインド */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                            type="text"
+                            className="input-field"
+                            placeholder="件名..."
+                            style={{ margin: 0, flex: 1 }}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            disabled={loading}
+                        />
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type="datetime-local"
+                                value={remindAt}
+                                onChange={(e) => setRemindAt(e.target.value)}
+                                className="input-field"
+                                style={{
+                                    margin: 0,
+                                    padding: '0 8px',
+                                    height: '36px',
+                                    fontSize: '0.8rem',
+                                    width: '180px',
+                                    color: remindAt ? 'var(--text-main)' : 'var(--text-muted)'
+                                }}
+                                title="リマインド日時を設定"
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    {/* 2行目: 本文入力エリア */}
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <div
+                            ref={contentRef}
+                            contentEditable
+                            className="input-field rich-editor"
+                            style={{
+                                marginTop: 0,
+                                minHeight: '80px',
+                                width: '100%',
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                background: 'rgba(0, 0, 0, 0.2)',
+                                color: 'white',
+                                borderRadius: '4px',
+                                padding: '8px 12px'
+                            }}
+                            onInput={(e) => {
+                                handleInput(e, 'post-form');
+                            }}
+                            onKeyDown={(e) => {
+                                if (isOpen) {
+                                    handleKeyDown(e, 'post-form', e.currentTarget);
+                                    if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+                                        return;
+                                    }
+                                }
+                            }}
+                            onPaste={(e: React.ClipboardEvent) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                            }}
+                        />
+                        {attachments.length > 0 && (
+                            <div className="attachment-preview-area" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                                {attachments.map((att, index) => (
+                                    <div key={index} className="attachment-item" style={{ position: 'relative', width: '120px', height: '120px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {att.type.startsWith('image/') ? (
+                                            <img src={att.thumbnailUrl || att.url} alt={att.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <span style={{ fontSize: '20px' }}>📄</span>
+                                        )}
+                                        <div
+                                            className="attachment-remove"
+                                            onClick={() => removeFile(index)}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                right: 0,
+                                                background: 'rgba(0,0,0,0.5)',
+                                                color: 'white',
+                                                width: '18px',
+                                                height: '18px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                fontSize: '12px'
+                                            }}
+                                        >
+                                            ×
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {isOpen && (
+                            <MentionList
+                                candidates={candidates}
+                                activeIndex={activeIndex}
+                                onSelect={(c) => {
+                                    if (contentRef.current) insertMention(c, contentRef.current);
+                                }}
+                                style={{
+                                    top: mentionCoords.top + (mentionPosition === 'top' ? -5 : 5),
+                                    left: mentionCoords.left,
+                                    position: 'fixed',
+                                    transform: mentionPosition === 'top' ? 'translateY(-100%)' : 'none'
+                                }}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* 右側: ボタン（縦並び） */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'flex-start' }}>
+                    <button
+                        type="button"
+                        className="btn btn-clip-yellow"
+                        title="ファイル添付"
+                        style={{
+                            padding: 0,
+                            width: '38px',
+                            height: '38px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            opacity: uploading ? 0.7 : 1,
+                            cursor: uploading ? 'default' : 'pointer'
+                        }}
+                        disabled={loading || uploading}
+                        onClick={handleAttachClick}
+                    >
+                        {uploading ? (
+                            <div className="spinner-small" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                        ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                        )}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="btn-send-blue"
+                        title="投稿"
+                        style={{
+                            padding: 0,
+                            width: '38px',
+                            height: '38px',
+                            flexShrink: 0,
+                            cursor: 'pointer',
+                        }}
+                        onClick={handleSubmit}
+                        disabled={loading || uploading}
+                    >
+                        {loading ? '...' : (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        )}
+                    </button>
+
+                    {uploading && (
+                        <div style={{ position: 'relative' }}>
+                            <span style={{ position: 'absolute', right: '45px', top: '-30px', whiteSpace: 'nowrap', fontSize: '0.7rem', color: 'var(--text-muted)', animation: 'fadeIn 0.2s' }}>
+                                {statusMessage}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    multiple
+                    onChange={handleFileChange}
+                    disabled={loading || uploading}
+                />
+
+                {/* Login Overlay */}
+                {isLoggingIn && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        backdropFilter: 'blur(5px)'
+                    }}>
+                        <div className="spinner-large" style={{
+                            width: '50px',
+                            height: '50px',
+                            border: '4px solid rgba(255,255,255,0.3)',
+                            borderTopColor: '#0078d4',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginBottom: '20px'
+                        }}></div>
+                        <h3 style={{ color: 'white', marginBottom: '10px' }}>Microsoftへログイン中...</h3>
+                        <p style={{ color: 'rgba(255,255,255,0.8)' }}>ポップアップウィンドウでログインしてください</p>
+                    </div>
+                )}
+            </section>
+        </div>
+    );
+};
