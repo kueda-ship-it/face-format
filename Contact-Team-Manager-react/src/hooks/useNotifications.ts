@@ -72,7 +72,7 @@ export function useNotifications() {
                         const title = `⏰ リマインド: ${thread.title}`;
                         const body = thread.user_id === user.id ? 'あなたが設定したリマインドです' : 'メンションされたリマインドです';
 
-                        if (Notification.permission === 'granted') {
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                             try {
                                 navigator.serviceWorker.ready.then(registration => {
                                     registration.showNotification(title, {
@@ -115,7 +115,7 @@ export function useNotifications() {
         if (!user) return;
 
         // Request permission
-        if (Notification.permission === 'default') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
         }
 
@@ -173,7 +173,7 @@ export function useNotifications() {
                 url = `${window.location.origin}/Contact-Team-Manager/?thread=${newRecord.thread_id}`;
             }
 
-            if (Notification.permission === 'granted') {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 try {
                     navigator.serviceWorker.ready.then(registration => {
                         registration.showNotification(title, {
