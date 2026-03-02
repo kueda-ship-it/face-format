@@ -8,8 +8,10 @@ import { Dashboard } from './components/Dashboard/Dashboard';
 import { Login } from './components/Login';
 import { useAuth } from './hooks/useAuth';
 import { useThreads, useTeams, useUserMemberships, useUnreadCounts } from './hooks/useSupabase';
+import { supabase } from './lib/supabase';
 import { useTheme } from './context/ThemeContext';
 import { useNotifications } from './hooks/useNotifications';
+import { MobileBottomNav } from './components/common/MobileBottomNav';
 import './styles/style.css';
 
 import { initializeMsal } from './lib/microsoftGraph';
@@ -58,6 +60,7 @@ function App() {
   const [threadsLimit, setThreadsLimit] = useState(50);
   const [sortAscending, setSortAscending] = useState(true);
   const [scrollToThreadId, setScrollToThreadId] = useState<string | null>(null);
+  const [activeMobileTab, setActiveMobileTab] = useState<'teams' | 'feed' | 'pending' | 'settings'>('feed');
 
   const { teams } = useTeams();
   // Ensure we fetch ALL pending items if that filter is active, regardless of default limit
@@ -211,7 +214,7 @@ function App() {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          Contact Team Manager
+          <span className="logo-text">Contact Team Manager</span>
         </div>
 
         <div className="header-search-container">
@@ -281,19 +284,24 @@ function App() {
         </div>
       </header>
 
-      <div className="main-wrapper">
+      <div className={`main-wrapper mobile-tab-${activeMobileTab}`}>
         <TeamsSidebar
           currentTeamId={currentTeamId}
           onSelectTeam={(id) => {
             setCurrentTeamId(id);
             setViewMode('feed');
+            setActiveMobileTab('feed');
           }}
           viewMode={viewMode}
-          onSelectDashboard={() => setViewMode('dashboard')}
+          onSelectDashboard={() => {
+            setViewMode('dashboard');
+            setActiveMobileTab('feed');
+          }}
           statusFilter={statusFilter}
           onSelectStatus={(status) => {
             setStatusFilter(status);
             setViewMode('feed');
+            setActiveMobileTab('feed');
           }}
           onEditTeam={() => {
             setSettingsInitialTab('team');
@@ -364,6 +372,21 @@ function App() {
           currentTeamName={currentTeamName}
         />
       )}
+
+      <MobileBottomNav
+        activeTab={activeMobileTab}
+        onTabChange={(tab) => {
+          setActiveMobileTab(tab);
+          if (tab === 'settings') {
+            setSettingsInitialTab('profile');
+            setIsSettingsOpen(true);
+          } else if (tab === 'feed' || tab === 'pending') {
+            setViewMode('feed');
+          }
+        }}
+        unreadCount={unreadTeams.size}
+        pendingCount={0}
+      />
     </div>
   );
 }

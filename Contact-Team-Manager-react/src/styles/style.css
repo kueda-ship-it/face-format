@@ -3338,3 +3338,217 @@ html {
 .blink-alert {
     animation: blink-animation 1.5s ease-in-out infinite;
 }
+
+/* --- Mobile PWA Design (Max-width: 768px) --- */
+@media (max-width: 768px) {
+    header {
+        padding: 0 10px;
+        height: 50px;
+    }
+
+    .logo-text {
+        display: none;
+    }
+
+    .header-search-container {
+        flex: 1;
+        margin: 0 10px;
+    }
+
+    .search-input {
+        width: 100% !important;
+        font-size: 16px !important;
+        /* Prevent iOS zoom */
+    }
+
+    .user-profile {
+        gap: 5px;
+    }
+
+    .user-profile>div:not(.avatar-container),
+    .theme-toggle-btn {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        padding-left: 0 !important;
+        padding-bottom: 60px !important;
+        /* Space for bottom nav */
+        height: calc(100vh - 50px);
+        overflow: hidden;
+    }
+
+    /* Tab Content Control */
+    .teams-sidebar,
+    .dashboard-layout,
+    .side-panel {
+        display: none !important;
+    }
+
+    /* Show only active tab content */
+    .mobile-tab-teams .teams-sidebar {
+        display: flex !important;
+        width: 100% !important;
+        position: relative !important;
+        top: 0 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .mobile-tab-feed .dashboard-layout {
+        display: flex !important;
+        width: 100% !important;
+    }
+
+    .mobile-tab-pending .dashboard-layout {
+        display: flex !important;
+        width: 100% !important;
+    }
+
+    /* Force RightSidebar to be visible in 'pending' tab */
+    .mobile-tab-pending .side-panel {
+        display: flex !important;
+        width: 100% !important;
+        flex: 1;
+    }
+
+    .mobile-tab-pending .main-feed-area {
+        display: none !important;
+    }
+
+    .main-feed-area {
+        flex: 1;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .feed-list {
+        max-width: 100% !important;
+        padding: 10px !important;
+    }
+
+    /* Eliminate Horizontal Scroll */
+    body,
+    html {
+        overflow-x: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+    }
+
+    .app-container {
+        overflow: hidden;
+        width: 100vw;
+    }
+
+    .post-form-container,
+    .static-form-container,
+    .compact-form {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 10px !important;
+    }
+
+    .compact-form {
+        flex-direction: column !important;
+    }
+
+    .compact-form>div {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Target the first row (Title & Remind) */
+    .compact-form>div>div:first-child {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 5px !important;
+    }
+
+    .compact-form input[type="text"],
+    .compact-form input[type="datetime-local"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .rich-editor {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .task-card {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        /* Ensure long URLs or text don't overflow */
+    }
+
+    /* Bottom Nav Styles */
+    .mobile-bottom-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: #2B2D31;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 9000;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        gap: 4px;
+        flex: 1;
+        cursor: pointer;
+    }
+
+    .nav-item.active {
+        color: var(--accent);
+    }
+
+    .nav-item span {
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .nav-icon-wrapper {
+        position: relative;
+    }
+
+    .nav-badge {
+        position: absolute;
+        top: -4px;
+        right: -8px;
+        background: var(--accent);
+        color: white;
+        font-size: 10px;
+        padding: 2px 5px;
+        border-radius: 10px;
+        min-width: 15px;
+        text-align: center;
+    }
+
+    .nav-badge.danger {
+        background: var(--danger);
+    }
+}
+
+/* Desktop Defaults */
+.mobile-bottom-nav {
+    display: none;
+}
