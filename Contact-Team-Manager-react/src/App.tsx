@@ -103,6 +103,43 @@ function App() {
     }
   }, [currentTeamId]);
 
+  // Handle ?thread=ID query parameter from notifications
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const threadId = params.get('thread');
+    if (threadId && !authLoading && user) {
+      // Find the thread and its team
+      const findAndNavigate = async () => {
+        // If thread is already in rawThreads, we can find its team_id
+        const loadedThread = rawThreads.find(t => t.id === threadId);
+        if (loadedThread) {
+          if (String(loadedThread.team_id) !== String(currentTeamId)) {
+            setCurrentTeamId(loadedThread.team_id);
+          }
+          handleSidebarThreadClick(threadId);
+          // Clear param from URL to avoid repeated navigation
+          const newUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState({}, '', newUrl);
+        } else {
+          // If not loaded, we might need to fetch it to know the team
+          const { data } = await supabase.from('threads').select('team_id').eq('id', threadId).single();
+          if (data) {
+            if (String(data.team_id) !== String(currentTeamId)) {
+              setCurrentTeamId(data.team_id);
+            }
+            // Give it a moment to load threads for the new team
+            setTimeout(() => {
+              handleSidebarThreadClick(threadId);
+              const newUrl = window.location.pathname + window.location.hash;
+              window.history.replaceState({}, '', newUrl);
+            }, 500);
+          }
+        }
+      };
+      findAndNavigate();
+    }
+  }, [authLoading, user, rawThreads]);
+
   // Title flashing for unread messages
   useEffect(() => {
     let interval: any;

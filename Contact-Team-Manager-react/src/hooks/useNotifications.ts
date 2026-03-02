@@ -78,7 +78,7 @@ export function useNotifications() {
                                     registration.showNotification(title, {
                                         body: body,
                                         icon: '/favicon-v2.png',
-                                        data: { url: `/?thread=${thread.id}` },
+                                        data: { url: `${window.location.origin}/Contact-Team-Manager/?thread=${thread.id}` },
                                         tag: 'reminder'
                                     });
                                 });
@@ -161,7 +161,7 @@ export function useNotifications() {
                     title = `新しい投稿: ${newRecord.title}`;
                     body = `${newRecord.author}さんが新しい投稿を作成しました`;
                 }
-                url = `/?thread=${newRecord.id}`;
+                url = `${window.location.origin}/Contact-Team-Manager/?thread=${newRecord.id}`;
             } else if (table === 'replies') {
                 if (isMentionedByName || isMentionedByAll || isMentionedByTag) {
                     title = `📢 返信でメンションされました`;
@@ -170,7 +170,7 @@ export function useNotifications() {
                     title = `新しい返信`;
                     body = `${newRecord.author}さんが返信しました`;
                 }
-                url = `/?thread=${newRecord.thread_id}`;
+                url = `${window.location.origin}/Contact-Team-Manager/?thread=${newRecord.thread_id}`;
             }
 
             if (Notification.permission === 'granted') {
