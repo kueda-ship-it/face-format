@@ -176,6 +176,28 @@ export const useMentions = ({ profiles, tags, currentTeamId, teams }: UseMention
     }, []);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent, threadId: string, inputEl: HTMLDivElement) => {
+        if (e.key === 'Backspace') {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                if (range.collapsed && range.startOffset === 0) {
+                    const node = range.startContainer;
+                    let prev: Node | null = null;
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        prev = node.previousSibling;
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        prev = node.childNodes[range.startOffset - 1] || null;
+                    }
+
+                    if (prev && prev.nodeType === Node.ELEMENT_NODE && (prev as HTMLElement).classList.contains('mention')) {
+                        e.preventDefault();
+                        prev.parentNode?.removeChild(prev);
+                        return;
+                    }
+                }
+            }
+        }
+
         if (!isOpen || targetThreadId !== threadId) return;
 
         if (e.key === 'ArrowDown') {

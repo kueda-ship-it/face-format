@@ -191,8 +191,8 @@ export const PostForm: React.FC<PostFormProps> = ({ teamId, onSuccess }) => {
                                 handleInput(e, 'post-form');
                             }}
                             onKeyDown={(e) => {
+                                handleKeyDown(e, 'post-form', e.currentTarget);
                                 if (isOpen) {
-                                    handleKeyDown(e, 'post-form', e.currentTarget);
                                     if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
                                         return;
                                     }
