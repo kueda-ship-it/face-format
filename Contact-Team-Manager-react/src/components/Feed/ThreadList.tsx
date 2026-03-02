@@ -687,8 +687,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                                             style={{ minHeight: '80px', marginBottom: '8px', color: 'var(--text-main)' }}
                                             onInput={(e) => handleInput(e, thread.id)}
                                             onKeyDown={(e) => {
+                                                handleKeyDown(e, thread.id, e.currentTarget);
                                                 if (isOpen && targetThreadId === thread.id) {
-                                                    handleKeyDown(e, thread.id, e.currentTarget);
+                                                    // Handle other mention keys if needed
                                                 }
                                             }}
                                         />
@@ -790,8 +791,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                                                                         style={{ minHeight: '60px', marginBottom: '8px', color: 'var(--text-main)', fontSize: '0.85rem' }}
                                                                         onInput={(e) => handleInput(e, reply.id)}
                                                                         onKeyDown={(e) => {
+                                                                            handleKeyDown(e, reply.id, e.currentTarget);
                                                                             if (isOpen && targetThreadId === reply.id) {
-                                                                                handleKeyDown(e, reply.id, e.currentTarget);
+                                                                                // Other keys
                                                                             }
                                                                         }}
                                                                     />
@@ -849,8 +851,8 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                                                         handleInput(e, thread.id);
                                                     }}
                                                     onKeyDown={(e) => {
+                                                        handleKeyDown(e, thread.id, e.currentTarget);
                                                         if (isOpen && targetThreadId === thread.id) {
-                                                            handleKeyDown(e, thread.id, e.currentTarget);
                                                             if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
                                                                 return;
                                                             }
